@@ -403,7 +403,7 @@ class SlopeDeflectionSolver:
             # Slope Deflection moments need to be converted to BMD convention
             # For hogging (tension on top): negative in BMD
             M_left_bmd = M_ab  # Keep as is (will be negative for hogging)
-            M_right_bmd = M_ba
+            M_right_bmd = -M_ba # Negate (SD 'positive' hogging -> BMD 'negative' hogging)
             
             # Linear interpolation
             emd = M_left_bmd + (M_right_bmd - M_left_bmd) * (x / L)
