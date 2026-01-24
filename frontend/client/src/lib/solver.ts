@@ -18,7 +18,9 @@ export async function solveContinuousBeam(spans: Span[]): Promise<CalculationRes
       loads: [{
         load_type: span.loadType === 'UDL' ? 'UDL' :
           span.loadType === 'POINT_CENTER' ? 'POINT_CENTER' :
-            span.loadType === 'POINT_ARBITRARY' ? 'POINT_ARBITRARY' : 'NONE',
+            span.loadType === 'POINT_ARBITRARY' ? 'POINT_ARBITRARY' :
+              span.loadType === 'TRIANGULAR' ? 'TRIANGULAR' :
+                span.loadType === 'MOMENT' ? 'MOMENT' : 'NONE',
         magnitude: span.loadMagnitude,
         position: span.loadType === 'POINT_ARBITRARY' ? span.loadPosition : undefined
       }]
