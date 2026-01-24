@@ -22,8 +22,11 @@ class LoadConfig(BaseModel):
 
 class DiagramData(BaseModel):
     """Data points for a diagram (SFD, FMD, EMD, BMD)."""
-    x_coords: List[float] = Field(description="X coordinates along span (m)")
+    x_coords: List[float] = Field(description="X coordinates along span (m)", alias="xCoords")
     values: List[float] = Field(description="Y values at each x coordinate")
+
+    class Config:
+        populate_by_name = True
 
 
 class Span(BaseModel):
@@ -51,10 +54,14 @@ class Span(BaseModel):
 
 class Support(BaseModel):
     """Support configuration at a node."""
-    node_index: int = Field(ge=0, description="Index of the node (0-based)")
+    node_index: int = Field(ge=0, description="Index of the node (0-based)", alias="nodeIndex")
     support_type: Literal["FIXED", "PINNED", "ROLLER"] = Field(
-        description="Type of support"
+        description="Type of support",
+        alias="supportType"
     )
+
+    class Config:
+        populate_by_name = True
 
 
 class CalculationRequest(BaseModel):
@@ -66,37 +73,47 @@ class CalculationRequest(BaseModel):
     )
     include_steps: bool = Field(
         default=True,
-        description="Include step-by-step solution in response"
+        description="Include step-by-step solution in response",
+        alias="includeSteps"
     )
+
+    class Config:
+        populate_by_name = True
 
 
 class SpanResult(BaseModel):
     """Analysis results for a single span."""
-    span_index: int
-    moment_left: float = Field(description="Bending moment at left end (kN·m)")
-    moment_right: float = Field(description="Bending moment at right end (kN·m)")
-    shear_left: float = Field(description="Shear force at left end (kN)")
-    shear_right: float = Field(description="Shear force at right end (kN)")
-    max_moment: float = Field(description="Maximum moment in span (kN·m)")
-    max_moment_location: float = Field(description="Location of max moment from left (m)")
+    span_index: int = Field(alias="spanId") # Mapping index to spanId for frontend compatibility
+    moment_left: float = Field(description="Bending moment at left end (kN·m)", alias="momentLeft")
+    moment_right: float = Field(description="Bending moment at right end (kN·m)", alias="momentRight")
+    shear_left: float = Field(description="Shear force at left end (kN)", alias="shearLeft")
+    shear_right: float = Field(description="Shear force at right end (kN)", alias="shearRight")
+    max_moment: float = Field(description="Maximum moment in span (kN·m)", alias="maxMoment")
+    max_moment_location: float = Field(description="Location of max moment from left (m)", alias="maxMomentLocation")
     
     # Diagram data for visualization
-    sfd_data: DiagramData = Field(description="Shear Force Diagram data")
-    fmd_data: DiagramData = Field(description="Free Moment Diagram data (simply supported)")
-    emd_data: DiagramData = Field(description="End Moment Diagram data (from support moments)")
-    bmd_data: DiagramData = Field(description="Complete Bending Moment Diagram (FMD + EMD)")
+    sfd_data: DiagramData = Field(description="Shear Force Diagram data", alias="sfdData")
+    fmd_data: DiagramData = Field(description="Free Moment Diagram data (simply supported)", alias="fmdData")
+    emd_data: DiagramData = Field(description="End Moment Diagram data (from support moments)", alias="emdData")
+    bmd_data: DiagramData = Field(description="Complete Bending Moment Diagram (FMD + EMD)", alias="bmdData")
 
+    class Config:
+        populate_by_name = True
 
 
 class NodeResult(BaseModel):
     """Results at a support node."""
-    node_index: int
+    node_index: int = Field(alias="nodeIndex")
     rotation: float = Field(description="Rotation at node (radians)")
     reaction: float = Field(description="Vertical reaction force (kN)")
     moment_reaction: Optional[float] = Field(
         default=None,
-        description="Moment reaction for fixed supports (kN·m)"
+        description="Moment reaction for fixed supports (kN·m)",
+        alias="momentReaction"
     )
+
+    class Config:
+        populate_by_name = True
 
 
 class SolutionStep(BaseModel):
