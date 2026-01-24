@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash2, Grid, Play, ArrowDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { FrameVisualizer } from '@/components/FrameVisualizer';
 
 export function FrameAnalysis() {
     const [nodes, setNodes] = useState<FrameNode[]>([
@@ -50,7 +51,6 @@ export function FrameAnalysis() {
             return;
         }
         setNodes(nodes.filter(n => n.id !== id));
-        // Remove localized loads
         setPointLoads(pointLoads.filter(l => l.targetId !== id));
     };
 
@@ -85,7 +85,7 @@ export function FrameAnalysis() {
             type: 'NODE_LOAD',
             targetId: nodes[nodes.length - 1]?.id || '',
             magnitudeX: 0,
-            magnitudeY: -10, // Default gravity load
+            magnitudeY: -10,
             moment: 0
         };
         setPointLoads([...pointLoads, newLoad]);
@@ -153,7 +153,6 @@ export function FrameAnalysis() {
                 {/* Left Column: Input Tables */}
                 <div className="lg:col-span-1 space-y-8">
 
-                    {/* Node Definition */}
                     <section className="space-y-4">
                         <div className="flex items-center justify-between">
                             <h3 className="text-lg font-semibold text-white flex items-center gap-2">
@@ -193,7 +192,6 @@ export function FrameAnalysis() {
                         </div>
                     </section>
 
-                    {/* Member Definition */}
                     <section className="space-y-4">
                         <div className="flex items-center justify-between">
                             <h3 className="text-lg font-semibold text-white flex items-center gap-2">
@@ -243,7 +241,6 @@ export function FrameAnalysis() {
                         </div>
                     </section>
 
-                    {/* Load Definition (New) */}
                     <section className="space-y-4">
                         <div className="flex items-center justify-between">
                             <h3 className="text-lg font-semibold text-white flex items-center gap-2">
@@ -291,17 +288,22 @@ export function FrameAnalysis() {
 
                 </div>
 
-                {/* Right Column: Results */}
+                {/* Right Column: Visualization & Results */}
                 <div className="lg:col-span-2 space-y-8">
-                    {/* Visualizer (Placeholder) */}
-                    <Card className="h-[400px] glass-card border-primary/20 flex flex-col">
-                        <CardHeader className="py-4 border-b border-border/50">
+                    {/* Visualizer */}
+                    <Card className="h-[500px] glass-card border-primary/20 flex flex-col overflow-hidden">
+                        <CardHeader className="py-4 border-b border-border/50 bg-slate-950/50">
                             <CardTitle className="text-lg">Structure Visualization</CardTitle>
                         </CardHeader>
-                        <CardContent className="flex-1 flex items-center justify-center relative p-0 overflow-hidden">
-                            <div className="absolute inset-0 bg-grid-white/[0.02] bg-[length:20px_20px]" />
-                            <p className="text-muted-foreground z-10">2D Frame Visualizer (Coming Next)</p>
-                        </CardContent>
+                        <div className="flex-1 relative bg-slate-950">
+                            <FrameVisualizer
+                                nodes={nodes}
+                                members={members}
+                                pointLoads={pointLoads}
+                                displacements={result?.displacements}
+                                scale={100} // Default deformation scale
+                            />
+                        </div>
                     </Card>
 
                     {/* Results */}
@@ -352,7 +354,6 @@ export function FrameAnalysis() {
                                                     const ry = result.reactions[baseIdx + 1];
                                                     const rm = result.reactions[baseIdx + 2];
 
-                                                    // Only show if node is restrained
                                                     if (!node.fixX && !node.fixY && !node.fixR) return null;
 
                                                     return (
@@ -364,9 +365,6 @@ export function FrameAnalysis() {
                                                         </TableRow>
                                                     );
                                                 })}
-                                                {result.reactions.every((r: number) => Math.abs(r) < 1e-6) && (
-                                                    <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">No significant reactions</TableCell></TableRow>
-                                                )}
                                             </TableBody>
                                         </Table>
                                     </div>
