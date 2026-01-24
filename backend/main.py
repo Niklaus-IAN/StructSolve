@@ -4,7 +4,7 @@ Provides REST API for structural analysis calculations.
 """
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from models import CalculationRequest, CalculationResponse, SpanResult, NodeResult
+from models import CalculationRequest, CalculationResponse, SpanResult, NodeResult, FrameRequest, FrameResponse
 from solver import SlopeDeflectionSolver
 import traceback
 
@@ -96,6 +96,51 @@ async def calculate(request: CalculationRequest):
             span_results=[],
             node_results=[],
             error_message=f"Calculation failed: {str(e)}"
+        )
+
+
+@app.post("/api/calculate-frame", response_model=FrameResponse)
+async def calculate_frame(request: FrameRequest):
+    """
+    Perform Direct Stiffness Method analysis on 2D frame.
+    """
+    try:
+        from frame_solver import FrameSolver
+        from models import FrameMemberResult, FrameResponse
+        
+        solver = FrameSolver()
+        results = solver.solve(request)
+        
+        # Convert member results dicts to Pydantic models
+        member_results = [
+            FrameMemberResult(
+                memberId=r["member_id"],
+                axialStart=r["axial_start"],
+                shearStart=r["shear_start"],
+                momentStart=r["moment_start"],
+                axialEnd=r["axial_end"],
+                shearEnd=r["shear_end"],
+                momentEnd=r["moment_end"]
+            )
+            for r in results["member_results"]
+        ]
+        
+        return FrameResponse(
+            success=True,
+            displacements=results["displacements"],
+            reactions=results["reactions"],
+            memberResults=member_results
+        )
+        
+    except Exception as e:
+        error_trace = traceback.format_exc()
+        print(f"Frame calculation error: {error_trace}")
+        return FrameResponse(
+            success=False,
+            displacements=[],
+            reactions=[],
+            memberResults=[],
+            errorMessage=f"Calculation failed: {str(e)}"
         )
 
 
