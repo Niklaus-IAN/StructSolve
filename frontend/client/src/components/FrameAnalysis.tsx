@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { FrameNode, FrameMember } from '@/lib/types';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2, Grid, Info } from 'lucide-react';
+import { Plus, Trash2, Grid, Play } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export function FrameAnalysis() {
@@ -17,6 +17,7 @@ export function FrameAnalysis() {
     const [members, setMembers] = useState<FrameMember[]>([
         { id: '1', startNodeId: '1', endNodeId: '2', elasticModulus: 200, momentOfInertia: 500, crossSectionArea: 0.01 }
     ]);
+    const [result, setResult] = useState<any>(null);
 
     const { toast } = useToast();
 
@@ -51,7 +52,6 @@ export function FrameAnalysis() {
     };
 
     const handleAddMember = () => {
-        // Default to connecting last two nodes if possible, or 1 and 2
         const startNode = nodes.length >= 2 ? nodes[nodes.length - 2].id : nodes[0]?.id || '';
         const endNode = nodes.length >= 1 ? nodes[nodes.length - 1].id : nodes[0]?.id || '';
 
@@ -74,6 +74,43 @@ export function FrameAnalysis() {
         setMembers(members.filter(m => m.id !== id));
     };
 
+    const handleCalculate = async () => {
+        try {
+            const payload = {
+                nodes: nodes,
+                members: members,
+                pointLoads: [], // TODO: Add UI for loads
+                uniformLoads: []
+            };
+
+            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/calculate-frame`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+
+            if (!data.success) {
+                throw new Error(data.errorMessage || "Calculation failed");
+            }
+
+            setResult(data);
+            toast({
+                title: "Analysis Complete",
+                description: "Frame analysis solved successfully.",
+            });
+
+        } catch (error) {
+            console.error('Calculation error:', error);
+            toast({
+                title: "Calculation Error",
+                description: error instanceof Error ? error.message : "Failed to solve frame.",
+                variant: "destructive"
+            });
+        }
+    };
+
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
             <div className="flex justify-between items-center">
@@ -81,6 +118,9 @@ export function FrameAnalysis() {
                     <h2 className="text-2xl font-bold tracking-tight text-white">2D Frame Analysis</h2>
                     <p className="text-muted-foreground">Define nodes and members for matrix analysis</p>
                 </div>
+                <Button onClick={handleCalculate} size="lg" className="shadow-lg bg-primary hover:bg-primary/90">
+                    <Play className="mr-2 h-4 w-4" /> Analyze Frame
+                </Button>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -247,9 +287,10 @@ export function FrameAnalysis() {
                     </section>
                 </div>
 
-                {/* Right Column: Visualization */}
-                <div className="lg:col-span-2">
-                    <Card className="h-[600px] glass-card border-primary/20 flex flex-col">
+                {/* Right Column: Visualization & Results */}
+                <div className="lg:col-span-2 space-y-8">
+                    {/* Visualizer (Placeholder) */}
+                    <Card className="h-[400px] glass-card border-primary/20 flex flex-col">
                         <CardHeader className="py-4 border-b border-border/50">
                             <CardTitle className="text-lg">Structure Visualization</CardTitle>
                         </CardHeader>
@@ -258,6 +299,61 @@ export function FrameAnalysis() {
                             <p className="text-muted-foreground z-10">2D Frame Visualizer (Coming Next)</p>
                         </CardContent>
                     </Card>
+
+                    {/* Results */}
+                    {result && (
+                        <Card className="glass-card border-primary/20">
+                            <CardHeader>
+                                <CardTitle>Analysis Results</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                                <div>
+                                    <h4 className="text-sm font-semibold mb-2 text-primary">Nodal Displacements</h4>
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow><TableHead>Type</TableHead><TableHead>Value</TableHead></TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {result.displacements.map((d: number, i: number) => {
+                                                // Map index to Node ID and DOF using nodes list
+                                                const nodeIdx = Math.floor(i / 3);
+                                                if (nodeIdx >= nodes.length) return null;
+                                                const node = nodes[nodeIdx];
+                                                const dofType = i % 3 === 0 ? 'X' : i % 3 === 1 ? 'Y' : 'Rot';
+                                                if (Math.abs(d) < 1e-10) return null; // Hide zero displacements
+                                                return (
+                                                    <TableRow key={i}>
+                                                        <TableCell>{`Node ${node.id.slice(0, 4)} - ${dofType}`}</TableCell>
+                                                        <TableCell>{d.toExponential(4)}</TableCell>
+                                                    </TableRow>
+                                                );
+                                            })}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+
+                                <div>
+                                    <h4 className="text-sm font-semibold mb-2 text-primary">Reactions</h4>
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow><TableHead>DOF Index</TableHead><TableHead>Reaction Force</TableHead></TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {result.reactions.map((r: number, i: number) => {
+                                                if (Math.abs(r) < 1e-6) return null;
+                                                return (
+                                                    <TableRow key={i}>
+                                                        <TableCell>{`DOF ${i}`}</TableCell>
+                                                        <TableCell>{r.toFixed(4)}</TableCell>
+                                                    </TableRow>
+                                                )
+                                            })}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
                 </div>
             </div>
         </div>
