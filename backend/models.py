@@ -192,3 +192,29 @@ class FrameRequest(BaseModel):
 
     class Config:
         populate_by_name = True
+
+
+class FrameMemberResult(BaseModel):
+    """Internal forces for a frame member."""
+    member_id: str = Field(alias="memberId")
+    axial_start: float = Field(alias="axialStart")
+    shear_start: float = Field(alias="shearStart")
+    moment_start: float = Field(alias="momentStart")
+    axial_end: float = Field(alias="axialEnd")
+    shear_end: float = Field(alias="shearEnd")
+    moment_end: float = Field(alias="momentEnd")
+
+    class Config:
+        populate_by_name = True
+
+
+class FrameResponse(BaseModel):
+    """Results of Frame Analysis."""
+    success: bool
+    displacements: List[float]
+    reactions: List[float]
+    member_results: List[FrameMemberResult] = Field(alias="memberResults")
+    error_message: Optional[str] = Field(None, alias="errorMessage")
+
+    class Config:
+        populate_by_name = True
