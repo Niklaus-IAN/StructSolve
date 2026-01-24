@@ -41,5 +41,49 @@ export interface SpanResult {
   shearForce?: number[];
   bendingMoment?: number[];
   slope?: number[];
-  deflection?: number[];
+
+// === FRAME ANALYSIS TYPES ===
+
+export interface FrameNode {
+  id: string;
+  x: number;
+  y: number;
+  fixX: boolean; // Restrained in X
+  fixY: boolean; // Restrained in Y
+  fixR: boolean; // Restrained Rotation
+}
+
+export interface FrameMember {
+  id: string;
+  startNodeId: string;
+  endNodeId: string;
+  elasticModulus: number; // E (kN/m²)
+  momentOfInertia: number; // I (m⁴)
+  crossSectionArea: number; // A (m²)
+}
+
+export type FrameLoadType = 'NODE_LOAD' | 'MEMBER_POINT_LOAD';
+
+export interface FramePointLoad {
+  id: string;
+  type: FrameLoadType;
+  targetId: string; // Node ID or Member ID
+  magnitudeX: number; // kN
+  magnitudeY: number; // kN
+  moment: number; // kNm
+  position?: number; // m (from start node, for member loads)
+}
+
+export interface FrameUniformLoad {
+  id: string;
+  memberId: string;
+  magnitudeX: number; // kN/m (Local axis)
+  magnitudeY: number; // kN/m (Local axis)
+}
+
+export interface FrameAnalysisRequest {
+  nodes: FrameNode[];
+  members: FrameMember[];
+  pointLoads: FramePointLoad[];
+  uniformLoads: FrameUniformLoad[];
 }

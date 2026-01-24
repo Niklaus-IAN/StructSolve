@@ -130,4 +130,65 @@ class CalculationResponse(BaseModel):
     span_results: List[SpanResult]
     node_results: List[NodeResult]
     solution_steps: Optional[List[SolutionStep]] = None
-    error_message: Optional[str] = None
+
+# === FRAME ANALYSIS MODELS ===
+
+class FrameNode(BaseModel):
+    """A node in a 2D frame structure."""
+    id: str = Field(description="Unique identifier for the node")
+    x: float = Field(description="X coordinate (m)")
+    y: float = Field(description="Y coordinate (m)")
+    # Support conditions (True = Fixed/Restrained, False = Free)
+    fix_x: bool = Field(default=False, description="Fixed in X direction", alias="fixX")
+    fix_y: bool = Field(default=False, description="Fixed in Y direction", alias="fixY")
+    fix_r: bool = Field(default=False, description="Fixed rotation", alias="fixR")
+
+    class Config:
+        populate_by_name = True
+
+
+class FrameMember(BaseModel):
+    """A member connecting two nodes in a 2D frame."""
+    id: str = Field(description="Unique identifier for the member")
+    start_node_id: str = Field(description="ID of start node", alias="startNodeId")
+    end_node_id: str = Field(description="ID of end node", alias="endNodeId")
+    elastic_modulus: float = Field(gt=0, description="Elastic modulus E (kN/m²)", alias="elasticModulus")
+    moment_of_inertia: float = Field(gt=0, description="Moment of inertia I (m⁴)", alias="momentOfInertia")
+    cross_section_area: float = Field(gt=0, description="Cross-sectional area A (m²)", alias="crossSectionArea")
+
+    class Config:
+        populate_by_name = True
+
+
+class FramePointLoad(BaseModel):
+    """Point load applied to a node or member."""
+    type: Literal["NODE_LOAD", "MEMBER_POINT_LOAD"] = Field(description="Type of point load")
+    target_id: str = Field(description="Node ID or Member ID applied to", alias="targetId")
+    magnitude_x: float = Field(default=0, description="Force in X direction (kN)", alias="magnitudeX")
+    magnitude_y: float = Field(default=0, description="Force in Y direction (kN)", alias="magnitudeY")
+    moment: float = Field(default=0, description="Moment (kNm)", alias="moment")
+    position: Optional[float] = Field(default=None, description="Distance from start node (for member loads)")
+
+    class Config:
+        populate_by_name = True
+
+
+class FrameUniformLoad(BaseModel):
+    """Uniformly distributed load applied to a member."""
+    member_id: str = Field(description="ID of member", alias="memberId")
+    magnitude_x: float = Field(default=0, description="UDL in local X direction (kN/m)", alias="magnitudeX")
+    magnitude_y: float = Field(default=0, description="UDL in local Y direction (kN/m)", alias="magnitudeY")
+
+    class Config:
+        populate_by_name = True
+
+
+class FrameRequest(BaseModel):
+    """Complete configuration for 2D Frame Analysis."""
+    nodes: List[FrameNode]
+    members: List[FrameMember]
+    point_loads: List[FramePointLoad] = Field(default_factory=list, alias="pointLoads")
+    uniform_loads: List[FrameUniformLoad] = Field(default_factory=list, alias="uniformLoads")
+
+    class Config:
+        populate_by_name = True
