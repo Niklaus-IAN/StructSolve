@@ -88,7 +88,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
       borderColor: `hsl(${idx * 120}, 70%, 60%)`,
       backgroundColor: `hsla(${idx * 120}, 70%, 60%, 0.1)`,
       fill: true,
-      tension: 0.1,
+      tension: 0,
       borderWidth: 2
     }))
   };
