@@ -76,40 +76,27 @@ export async function solveContinuousBeam(spans: Span[]): Promise<CalculationRes
     const results: CalculationResult = {
       spans: data.span_results.map((spanResult: any, index: number) => {
         const span = spans[index];
-        const steps = 20;
-        const dx = span.length / steps;
 
-        // Generate stations for plotting
-        const stations: number[] = [];
-        const shearForce: number[] = [];
-        const bendingMoment: number[] = [];
-
-        let currentX = spans.slice(0, index).reduce((sum, s) => sum + s.length, 0);
-
-        // Create smooth curves for visualization
-        for (let i = 0; i <= steps; i++) {
-          const x = i * dx;
-          stations.push(currentX + x);
-
-          // Linear interpolation for bending moment
-          const t = i / steps;
-          const moment = spanResult.moment_left * (1 - t) + spanResult.moment_right * t;
-          bendingMoment.push(moment);
-
-          // Approximate shear (constant for now, could be improved)
-          const shear = i < steps / 2 ? spanResult.shear_left : spanResult.shear_right;
-          shearForce.push(shear);
-        }
-
+        // Use the high-resolution diagram data from backend
+        // Note: Backend now sends camelCase keys due to Pydantic aliases
         return {
           spanId: span.id,
-          stations,
-          shearForce,
-          bendingMoment,
-          slope: new Array(steps + 1).fill(0), // Not calculated yet
-          deflection: new Array(steps + 1).fill(0), // Not calculated yet
-          momentLeft: spanResult.moment_left,
-          momentRight: spanResult.moment_right
+          // Legacy fields - map from new data if needed, or leave empty/derived
+          // For now, we rely on the new data fields in ResultsDisplay
+          stations: spanResult.sfdData?.xCoords || [],
+          shearForce: spanResult.sfdData?.values || [],
+          bendingMoment: spanResult.bmdData?.values || [],
+          slope: [], // Not yet implemented in backend
+          deflection: [], // Not yet implemented in backend
+
+          momentLeft: spanResult.momentLeft,
+          momentRight: spanResult.momentRight,
+
+          // Forward the new diagram data structures
+          sfdData: spanResult.sfdData,
+          fmdData: spanResult.fmdData,
+          emdData: spanResult.emdData,
+          bmdData: spanResult.bmdData
         };
       }),
       reactions: data.node_results.map((node: any) => node.reaction),
