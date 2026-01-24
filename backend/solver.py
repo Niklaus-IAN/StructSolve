@@ -25,15 +25,16 @@ def calculate_fem(load: LoadConfig, length: float) -> Tuple[float, float]:
     
     if load.load_type == "UDL":
         # Uniformly Distributed Load: wL²/12
-        # FEM_left = -wL²/12 (hogging)
-        # FEM_right = +wL²/12 (hogging)
+        # FEM_left = -wL²/12 (CW -> Negative -> Hogging)
+        # FEM_right = +wL²/12 (CCW -> Positive -> Hogging)
         fem = (w * L**2) / 12
         return (-fem, fem)
     
     elif load.load_type == "POINT_CENTER":
         # Point load at center: PL/8
+        # Signs: Left (-) Right (+) for Hogging
         fem = (w * L) / 8
-        return (fem, -fem)
+        return (-fem, fem)
     
     elif load.load_type == "POINT_ARBITRARY":
         # Point load at arbitrary position
@@ -41,17 +42,17 @@ def calculate_fem(load: LoadConfig, length: float) -> Tuple[float, float]:
         b = L - a  # Distance from right
         
         # FEM_left = -Pab²/L²
-        # FEM_right = Pa²b/L²
+        # FEM_right = +Pa²b/L²
         fem_left = -(w * a * b**2) / L**2
         fem_right = (w * a**2 * b) / L**2
         return (fem_left, fem_right)
     
     elif load.load_type == "TRIANGULAR":
         # Triangular load (zero at left, maximum at right)
-        # FEM_left = wL²/30
-        # FEM_right = -wL²/20
-        fem_left = (w * L**2) / 30
-        fem_right = -(w * L**2) / 20
+        # FEM_left = -wL²/30 (CW -> Negative)
+        # FEM_right = +wL²/20 (CCW -> Positive)
+        fem_left = -(w * L**2) / 30
+        fem_right = (w * L**2) / 20
         return (fem_left, fem_right)
     
     elif load.load_type == "MOMENT":
