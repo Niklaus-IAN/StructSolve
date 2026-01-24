@@ -77,67 +77,83 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
     }
   };
 
-  // Prepare SFD data (combine all spans)
+  // Prepare SFD data (combine all spans into one continuous dataset)
+  const allSfdPoints = result.spans.flatMap((span, idx) => {
+    const offsetX = idx > 0 ? result.spans.slice(0, idx).reduce((sum, s) => sum + Math.max(...s.sfdData.xCoords), 0) : 0;
+    return span.sfdData.xCoords.map((x, i) => ({
+      x: x + offsetX,
+      y: span.sfdData.values[i]
+    }));
+  });
+
   const sfdData = {
-    datasets: result.spans.map((span, idx) => ({
-      label: `Span ${idx + 1} - Shear Force`,
-      data: span.sfdData.xCoords.map((x, i) => ({
-        x: x + (idx * (result.spans[idx - 1]?.sfdData.xCoords.length ? result.spans.slice(0, idx).reduce((sum, s) => sum + Math.max(...s.sfdData.xCoords), 0) : 0)),
-        y: span.sfdData.values[i]
-      })),
-      borderColor: `hsl(${idx * 120}, 70%, 60%)`,
-      backgroundColor: `hsla(${idx * 120}, 70%, 60%, 0.1)`,
+    datasets: [{
+      label: 'Shear Force',
+      data: allSfdPoints,
+      borderColor: 'rgb(255, 99, 132)',
+      backgroundColor: 'rgba(255, 99, 132, 0.2)',
       fill: true,
       tension: 0,
-      borderWidth: 2
-    }))
+      borderWidth: 2,
+      pointRadius: 0
+    }]
   };
 
-  // Prepare BMD data with FMD, EMD, and complete BMD
+  // Prepare BMD data (combine all spans)
   const bmdDatasets = [];
 
-  result.spans.forEach((span, idx) => {
-    const offsetX = idx > 0 ? result.spans.slice(0, idx).reduce((sum, s) => sum + Math.max(...s.bmdData.xCoords), 0) : 0;
+  // Calculate offsets for all spans once
+  const spanOffsets = result.spans.map((_, idx) =>
+    idx > 0 ? result.spans.slice(0, idx).reduce((sum, s) => sum + Math.max(...s.bmdData.xCoords), 0) : 0
+  );
 
-    if (showFMD) {
-      bmdDatasets.push({
-        label: `Span ${idx + 1} - FMD (Simply Supported)`,
-        data: span.fmdData.xCoords.map((x, i) => ({ x: x + offsetX, y: span.fmdData.values[i] })),
-        borderColor: `hsla(210, 100%, 60%, 0.6)`,
-        backgroundColor: 'transparent',
-        borderDash: [5, 5],
-        borderWidth: 2,
-        tension: 0.4,
-        pointRadius: 0
-      });
-    }
+  if (showFMD) {
+    const allFmdPoints = result.spans.flatMap((span, idx) =>
+      span.fmdData.xCoords.map((x, i) => ({ x: x + spanOffsets[idx], y: span.fmdData.values[i] }))
+    );
+    bmdDatasets.push({
+      label: 'FMD (Simply Supported)',
+      data: allFmdPoints,
+      borderColor: 'rgb(53, 162, 235)',
+      backgroundColor: 'transparent',
+      borderDash: [5, 5],
+      borderWidth: 2,
+      tension: 0.4,
+      pointRadius: 0
+    });
+  }
 
-    if (showEMD) {
-      bmdDatasets.push({
-        label: `Span ${idx + 1} - EMD (End Moments)`,
-        data: span.emdData.xCoords.map((x, i) => ({ x: x + offsetX, y: span.emdData.values[i] })),
-        borderColor: `hsla(0, 100%, 60%, 0.6)`,
-        backgroundColor: 'transparent',
-        borderDash: [10, 5],
-        borderWidth: 2,
-        tension: 0,
-        pointRadius: 0
-      });
-    }
+  if (showEMD) {
+    const allEmdPoints = result.spans.flatMap((span, idx) =>
+      span.emdData.xCoords.map((x, i) => ({ x: x + spanOffsets[idx], y: span.emdData.values[i] }))
+    );
+    bmdDatasets.push({
+      label: 'EMD (End Moments)',
+      data: allEmdPoints,
+      borderColor: 'rgb(255, 99, 132)',
+      backgroundColor: 'transparent',
+      borderDash: [10, 5],
+      borderWidth: 2,
+      tension: 0,
+      pointRadius: 0
+    });
+  }
 
-    if (showBMD) {
-      bmdDatasets.push({
-        label: `Span ${idx + 1} - Complete BMD`,
-        data: span.bmdData.xCoords.map((x, i) => ({ x: x + offsetX, y: span.bmdData.values[i] })),
-        borderColor: `hsl(${idx * 120 + 150}, 70%, 60%)`,
-        backgroundColor: `hsla(${idx * 120 + 150}, 70%, 60%, 0.1)`,
-        fill: true,
-        borderWidth: 3,
-        tension: 0,
-        pointRadius: 0
-      });
-    }
-  });
+  if (showBMD) {
+    const allBmdPoints = result.spans.flatMap((span, idx) =>
+      span.bmdData.xCoords.map((x, i) => ({ x: x + spanOffsets[idx], y: span.bmdData.values[i] }))
+    );
+    bmdDatasets.push({
+      label: 'Complete BMD',
+      data: allBmdPoints,
+      borderColor: 'rgb(75, 192, 192)',
+      backgroundColor: 'rgba(75, 192, 192, 0.2)',
+      fill: true,
+      borderWidth: 3,
+      tension: 0,
+      pointRadius: 0
+    });
+  }
 
   const bmdData = { datasets: bmdDatasets };
 
