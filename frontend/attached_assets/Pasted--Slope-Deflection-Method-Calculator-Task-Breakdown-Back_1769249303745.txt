@@ -1,0 +1,62 @@
+# Slope Deflection Method Calculator - Task Breakdown
+
+## Backend Development (Python/FastAPI)
+- [x] Set up FastAPI project structure
+  - [x] Create virtual environment and install dependencies
+  - [x] Set up main FastAPI application
+  - [x] Configure CORS for frontend communication
+- [x] Implement core structural analysis logic
+  - [x] Create Fixed End Moment (FEM) calculator for different load types
+  - [x] Implement stiffness matrix assembly
+  - [x] Add boundary condition handling (Fixed, Pinned, Roller supports)
+  - [x] Implement linear equation solver using NumPy
+  - [x] Add post-processing for final moments, shear, and reactions
+- [x] Create API endpoints
+  - [x] POST `/api/calculate` - Main calculation endpoint
+  - [x] GET `/api/health` - Health check endpoint
+- [x] Add input validation using Pydantic models
+- [x] Implement step-by-step solution output (for educational purposes)
+
+## Frontend Development (React + TypeScript)
+- [x] Set up React + TypeScript project with Vite
+  - [x] Initialize project structure
+  - [x] Install dependencies (React, TypeScript, Chart.js, Axios)
+  - [x] Configure development environment
+- [x] Design and implement UI components
+  - [x] Create main calculator layout
+  - [x] Build dynamic span input component
+  - [x] Add support configuration component
+  - [x] Implement load input forms (UDL, Point loads, etc.)
+  - [x] Create results display component
+- [x] Implement state management
+  - [x] Manage spans array with add/remove functionality
+  - [x] Handle support types and positions
+  - [x] Store and display calculation results
+- [x] Add visualization features
+  - [x] Bending Moment Diagram (BMD)
+  - [x] Shear Force Diagram (SFD)
+  - [x] Beam/Frame schematic display
+- [x] Implement API integration
+  - [x] Connect to backend calculation endpoint
+  - [x] Handle loading states and errors
+  - [x] Display step-by-step solution
+
+## Testing & Verification
+- [ ] Backend testing
+  - [ ] Test FEM calculations against known values
+  - [ ] Verify matrix assembly for simple cases
+  - [ ] Test boundary condition application
+- [ ] Frontend testing
+  - [ ] Test dynamic span addition/removal
+  - [ ] Verify input validation
+  - [ ] Test visualization rendering
+- [ ] Integration testing
+  - [ ] Test complete calculation flow
+  - [ ] Verify results against hand calculations
+  - [ ] Test with standard textbook examples
+
+## Documentation & Polish
+- [ ] Add code comments and docstrings
+- [ ] Create README with setup instructions
+- [ ] Add example problems and solutions
+- [ ] Ensure code quality for grading review
