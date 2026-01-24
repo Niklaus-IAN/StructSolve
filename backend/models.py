@@ -20,6 +20,12 @@ class LoadConfig(BaseModel):
     )
 
 
+class DiagramData(BaseModel):
+    """Data points for a diagram (SFD, FMD, EMD, BMD)."""
+    x_coords: List[float] = Field(description="X coordinates along span (m)")
+    values: List[float] = Field(description="Y values at each x coordinate")
+
+
 class Span(BaseModel):
     """Represents a single span in the beam/frame."""
     id: str = Field(description="Unique identifier for the span")
@@ -73,6 +79,13 @@ class SpanResult(BaseModel):
     shear_right: float = Field(description="Shear force at right end (kN)")
     max_moment: float = Field(description="Maximum moment in span (kN·m)")
     max_moment_location: float = Field(description="Location of max moment from left (m)")
+    
+    # Diagram data for visualization
+    sfd_data: DiagramData = Field(description="Shear Force Diagram data")
+    fmd_data: DiagramData = Field(description="Free Moment Diagram data (simply supported)")
+    emd_data: DiagramData = Field(description="End Moment Diagram data (from support moments)")
+    bmd_data: DiagramData = Field(description="Complete Bending Moment Diagram (FMD + EMD)")
+
 
 
 class NodeResult(BaseModel):
