@@ -133,7 +133,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
         backgroundColor: `hsla(${idx * 120 + 150}, 70%, 60%, 0.1)`,
         fill: true,
         borderWidth: 3,
-        tension: 0.4,
+        tension: 0,
         pointRadius: 0
       });
     }
