@@ -1,4 +1,4 @@
-export type LoadType = 'UDL' | 'POINT_CENTER' | 'NONE';
+export type LoadType = 'UDL' | 'POINT_CENTER' | 'POINT_ARBITRARY' | 'TRIANGULAR' | 'MOMENT' | 'NONE';
 export type SupportType = 'FIXED' | 'PINNED' | 'ROLLER';
 
 export interface Span {
@@ -8,6 +8,7 @@ export interface Span {
   inertia: number;        // I (m4)
   loadType: LoadType;
   loadMagnitude: number;  // kN or kN/m
+  loadPosition?: number;  // Position from left for POINT_ARBITRARY (m)
   leftSupport: SupportType;
   rightSupport: SupportType;
 }

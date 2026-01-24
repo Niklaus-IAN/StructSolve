@@ -17,9 +17,10 @@ export async function solveContinuousBeam(spans: Span[]): Promise<CalculationRes
       momentOfInertia: span.inertia / 1000000, // Convert to m⁴ (cm⁴ to m⁴)
       loads: [{
         load_type: span.loadType === 'UDL' ? 'UDL' :
-          span.loadType === 'POINT_CENTER' ? 'POINT_CENTER' : 'NONE',
+          span.loadType === 'POINT_CENTER' ? 'POINT_CENTER' :
+            span.loadType === 'POINT_ARBITRARY' ? 'POINT_ARBITRARY' : 'NONE',
         magnitude: span.loadMagnitude,
-        position: undefined
+        position: span.loadType === 'POINT_ARBITRARY' ? span.loadPosition : undefined
       }]
     }));
 
