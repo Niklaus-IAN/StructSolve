@@ -41,6 +41,8 @@ export interface SpanResult {
   shearForce?: number[];
   bendingMoment?: number[];
   slope?: number[];
+  deflection?: number[];
+}
 
 // === FRAME ANALYSIS TYPES ===
 
