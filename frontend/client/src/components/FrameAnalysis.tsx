@@ -361,6 +361,8 @@ export function FrameAnalysis() {
                                 nodes={nodes}
                                 members={members}
                                 pointLoads={pointLoads}
+                                memberPointLoads={memberPointLoads}
+                                uniformLoads={uniformLoads}
                                 displacements={result?.displacements}
                                 memberResults={result?.member_results}
                                 showBMD={showBMD}
