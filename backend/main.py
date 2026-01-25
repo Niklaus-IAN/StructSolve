@@ -120,7 +120,13 @@ async def calculate_frame(request: FrameRequest):
                 momentStart=r["moment_start"],
                 axialEnd=r["axial_end"],
                 shearEnd=r["shear_end"],
-                momentEnd=r["moment_end"]
+                momentEnd=r["moment_end"],
+                stations=r.get("stations"),
+                nDiagram=r.get("n_diagram"),
+                vDiagram=r.get("v_diagram"),
+                mDiagram=r.get("m_diagram"),
+                fmdDiagram=r.get("fmd_diagram"),
+                emdDiagram=r.get("emd_diagram")
             )
             for r in results["member_results"]
         ]
