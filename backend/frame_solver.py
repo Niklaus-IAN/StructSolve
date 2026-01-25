@@ -132,6 +132,7 @@ class FrameSolver:
             member_results.append(result)
             
         return {
+            "success": True,
             "displacements": u_total.tolist(),
             "reactions": reactions.tolist(),
             "member_results": member_results
