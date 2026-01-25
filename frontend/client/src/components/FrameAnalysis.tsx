@@ -373,8 +373,9 @@ export function FrameAnalysis() {
                     </Card>
 
                     {/* Results Display (Detailed Charts) */}
-                    {mappedResult && (
-                        <div className="space-y-8 animate-in slide-in-from-bottom-10 duration-500">
+                    {/* Results Display (Detailed Charts) */}
+                    {mappedResult ? (
+                        <div className="space-y-8">
                             <div>
                                 <h3 className="text-2xl font-bold tracking-tight text-white mb-6">Detailed Member Diagrams</h3>
                                 <ResultsDisplay result={mappedResult} />
@@ -444,6 +445,12 @@ export function FrameAnalysis() {
                                     </div>
                                 </CardContent>
                             </Card>
+                        </div>
+                    ) : result && (
+                        <div className="p-4 border border-red-500 bg-red-950/20 text-red-200 rounded-lg">
+                            <h3 className="font-bold">Debug Error</h3>
+                            <p>Result received but mapping failed.</p>
+                            <pre className="text-xs mt-2 overflow-auto max-h-40">{JSON.stringify(result, null, 2)}</pre>
                         </div>
                     )}
 
