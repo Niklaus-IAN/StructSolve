@@ -16,9 +16,10 @@ export function FrameAnalysis() {
         { id: '2', x: 0, y: 3, fixX: false, fixY: false, fixR: false },
     ]);
     const [members, setMembers] = useState<FrameMember[]>([
-        { id: '1', startNodeId: '1', endNodeId: '2', elasticModulus: 200, momentOfInertia: 500, crossSectionArea: 0.01 }
+        { id: '1', startNodeId: '1', endNodeId: '2', elasticModulus: 200, momentOfInertia: 500, crossSectionArea: 0.01, releaseStart: false, releaseEnd: false }
     ]);
     const [pointLoads, setPointLoads] = useState<FramePointLoad[]>([]);
+    const [uniformLoads, setUniformLoads] = useState<any[]>([]); // Use appropriate type if available
     const [result, setResult] = useState<any>(null);
 
     const { toast } = useToast();
@@ -71,7 +72,9 @@ export function FrameAnalysis() {
             endNodeId: endNode,
             elasticModulus: 200,
             momentOfInertia: 500,
-            crossSectionArea: 0.01
+            crossSectionArea: 0.01,
+            releaseStart: false,
+            releaseEnd: false
         };
         setMembers([...members, newMember]);
     };
@@ -112,7 +115,7 @@ export function FrameAnalysis() {
                 nodes,
                 members,
                 pointLoads,
-                uniformLoads: []
+                uniformLoads // Send uniform loads
             };
 
             const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/calculate-frame`, {
@@ -217,6 +220,8 @@ export function FrameAnalysis() {
                                         <TableHead>E <span className="text-xs text-muted-foreground">(GPa)</span></TableHead>
                                         <TableHead>I <span className="text-xs text-muted-foreground">(10⁶)</span></TableHead>
                                         <TableHead>A <span className="text-xs text-muted-foreground">(m²)</span></TableHead>
+                                        <TableHead title="Pin Start" className="w-[30px]">PS</TableHead>
+                                        <TableHead title="Pin End" className="w-[30px]">PE</TableHead>
                                         <TableHead className="w-[40px]"></TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -239,6 +244,8 @@ export function FrameAnalysis() {
                                             <TableCell><Input type="number" value={member.elasticModulus} onChange={(e) => updateMember(member.id, 'elasticModulus', parseFloat(e.target.value))} className="h-7 w-12 px-1 text-right" /></TableCell>
                                             <TableCell><Input type="number" value={member.momentOfInertia} onChange={(e) => updateMember(member.id, 'momentOfInertia', parseFloat(e.target.value))} className="h-7 w-12 px-1 text-right" /></TableCell>
                                             <TableCell><Input type="number" value={member.crossSectionArea} onChange={(e) => updateMember(member.id, 'crossSectionArea', parseFloat(e.target.value))} className="h-7 w-12 px-1 text-right" /></TableCell>
+                                            <TableCell><Checkbox checked={member.releaseStart} onCheckedChange={(c) => updateMember(member.id, 'releaseStart', c === true)} /></TableCell>
+                                            <TableCell><Checkbox checked={member.releaseEnd} onCheckedChange={(c) => updateMember(member.id, 'releaseEnd', c === true)} /></TableCell>
                                             <TableCell><Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => removeMember(member.id)}><Trash2 className="h-3 w-3" /></Button></TableCell>
                                         </TableRow>
                                     ))}
@@ -285,6 +292,67 @@ export function FrameAnalysis() {
                                     {pointLoads.length === 0 && (
                                         <TableRow>
                                             <TableCell colSpan={5} className="text-center text-muted-foreground h-12">No loads defined</TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </section>
+
+                    {/* Uniform Loads Section */}
+                    <section className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                                <ArrowDown className="h-4 w-4 text-primary" /> Member Loads (UDL)
+                            </h3>
+                            <Button onClick={() => {
+                                const newLoad = {
+                                    id: crypto.randomUUID().slice(0, 8),
+                                    type: 'UNIFORM_LOAD',
+                                    memberId: members[0]?.id || '',
+                                    magnitudeX: 0,
+                                    magnitudeY: -10
+                                };
+                                setUniformLoads([...uniformLoads, newLoad]);
+                            }} size="sm" variant="outline" className="h-8">
+                                <Plus className="h-3 w-3 mr-1" /> Add
+                            </Button>
+                        </div>
+                        <div className="rounded-md border border-border/50 overflow-hidden bg-card/50 backdrop-blur-sm">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow className="hover:bg-transparent border-border/50">
+                                        <TableHead className="w-[80px]">Member</TableHead>
+                                        <TableHead>Wx <span className="text-xs text-muted-foreground">(kN/m)</span></TableHead>
+                                        <TableHead>Wy <span className="text-xs text-muted-foreground">(kN/m)</span></TableHead>
+                                        <TableHead className="w-[40px]"></TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {uniformLoads.map((load) => (
+                                        <TableRow key={load.id} className="hover:bg-muted/10 border-border/50">
+                                            <TableCell>
+                                                <Select value={load.memberId} onValueChange={(val) => {
+                                                    setUniformLoads(uniformLoads.map(l => l.id === load.id ? { ...l, memberId: val } : l));
+                                                }}>
+                                                    <SelectTrigger className="h-7 w-[70px] px-1"><SelectValue placeholder="Mem" /></SelectTrigger>
+                                                    <SelectContent>{members.map(m => <SelectItem key={m.id} value={m.id}>M{m.id}</SelectItem>)}</SelectContent>
+                                                </Select>
+                                            </TableCell>
+                                            <TableCell><Input type="number" value={load.magnitudeX} onChange={(e) => {
+                                                setUniformLoads(uniformLoads.map(l => l.id === load.id ? { ...l, magnitudeX: parseFloat(e.target.value) } : l));
+                                            }} className="h-7 w-20 px-1 text-right" /></TableCell>
+                                            <TableCell><Input type="number" value={load.magnitudeY} onChange={(e) => {
+                                                setUniformLoads(uniformLoads.map(l => l.id === load.id ? { ...l, magnitudeY: parseFloat(e.target.value) } : l));
+                                            }} className="h-7 w-20 px-1 text-right" /></TableCell>
+                                            <TableCell><Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => {
+                                                setUniformLoads(uniformLoads.filter(l => l.id !== load.id));
+                                            }}><Trash2 className="h-3 w-3" /></Button></TableCell>
+                                        </TableRow>
+                                    ))}
+                                    {uniformLoads.length === 0 && (
+                                        <TableRow>
+                                            <TableCell colSpan={4} className="text-center text-muted-foreground h-12">No UDLs defined</TableCell>
                                         </TableRow>
                                     )}
                                 </TableBody>
