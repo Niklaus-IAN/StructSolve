@@ -374,9 +374,76 @@ export function FrameAnalysis() {
 
                     {/* Results Display (Detailed Charts) */}
                     {mappedResult && (
-                        <div className="animate-in slide-in-from-bottom-10 duration-500">
-                            <h3 className="text-2xl font-bold tracking-tight text-white mb-6">Detailed Member Diagrams</h3>
-                            <ResultsDisplay result={mappedResult} />
+                        <div className="space-y-8 animate-in slide-in-from-bottom-10 duration-500">
+                            <div>
+                                <h3 className="text-2xl font-bold tracking-tight text-white mb-6">Detailed Member Diagrams</h3>
+                                <ResultsDisplay result={mappedResult} />
+                            </div>
+
+                            {/* Restored Tables: Analysis Results */}
+                            <Card className="glass-card border-primary/20">
+                                <CardHeader>
+                                    <CardTitle>Analysis Data Tables</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-8">
+                                    <div>
+                                        <h4 className="text-sm font-semibold mb-2 text-primary">Nodal Displacements</h4>
+                                        <div className="rounded-md border border-border/50 overflow-hidden">
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow className="hover:bg-transparent bg-muted/20"><TableHead>Node</TableHead><TableHead className="text-right">Dx (mm)</TableHead><TableHead className="text-right">Dy (mm)</TableHead><TableHead className="text-right">Rotation (rad)</TableHead></TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {nodes.map((node, idx) => {
+                                                        const baseIdx = idx * 3;
+                                                        const dx = result?.displacements ? result.displacements[baseIdx] : 0;
+                                                        const dy = result?.displacements ? result.displacements[baseIdx + 1] : 0;
+                                                        const rot = result?.displacements ? result.displacements[baseIdx + 2] : 0;
+                                                        return (
+                                                            <TableRow key={node.id} className="hover:bg-transparent">
+                                                                <TableCell className="font-mono text-xs">{node.id}</TableCell>
+                                                                <TableCell className={`text-right ${Math.abs(dx) > 1e-6 ? 'text-white' : 'text-muted-foreground'}`}>{(dx * 1000).toFixed(4)}</TableCell>
+                                                                <TableCell className={`text-right ${Math.abs(dy) > 1e-6 ? 'text-white' : 'text-muted-foreground'}`}>{(dy * 1000).toFixed(4)}</TableCell>
+                                                                <TableCell className={`text-right ${Math.abs(rot) > 1e-6 ? 'text-white' : 'text-muted-foreground'}`}>{rot.toExponential(4)}</TableCell>
+                                                            </TableRow>
+                                                        );
+                                                    })}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <h4 className="text-sm font-semibold mb-2 text-primary">Support Reactions</h4>
+                                        <div className="rounded-md border border-border/50 overflow-hidden">
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow className="hover:bg-transparent bg-muted/20"><TableHead>Node</TableHead><TableHead className="text-right">Rx (kN)</TableHead><TableHead className="text-right">Ry (kN)</TableHead><TableHead className="text-right">Moment (kNm)</TableHead></TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {nodes.map((node, idx) => {
+                                                        const baseIdx = idx * 3;
+                                                        const rx = result?.reactions ? result.reactions[baseIdx] : 0;
+                                                        const ry = result?.reactions ? result.reactions[baseIdx + 1] : 0;
+                                                        const rm = result?.reactions ? result.reactions[baseIdx + 2] : 0;
+
+                                                        if (!node.fixX && !node.fixY && !node.fixR) return null;
+
+                                                        return (
+                                                            <TableRow key={node.id} className="hover:bg-transparent">
+                                                                <TableCell className="font-mono text-xs">{node.id}</TableCell>
+                                                                <TableCell className="text-right text-accent">{node.fixX ? rx.toFixed(3) : '-'}</TableCell>
+                                                                <TableCell className="text-right text-accent">{node.fixY ? ry.toFixed(3) : '-'}</TableCell>
+                                                                <TableCell className="text-right text-accent">{node.fixR ? rm.toFixed(3) : '-'}</TableCell>
+                                                            </TableRow>
+                                                        );
+                                                    })}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
                         </div>
                     )}
 
