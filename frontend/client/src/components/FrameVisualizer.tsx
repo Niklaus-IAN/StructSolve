@@ -97,7 +97,7 @@ export function FrameVisualizer({ nodes, members, pointLoads, displacements, sca
                         <g key={m.id}>
                             <line x1={s.sx} y1={s.sy} x2={e.sx} y2={e.sy} stroke="hsl(210, 100%, 60%)" strokeWidth="4" strokeLinecap="round" />
                             {/* ID Label */}
-                            <text x={(s.sx + e.sx) / 2} y={(s.sy + e.sy) / 2 - 10} fill="gray" fontSize="12" textAnchor="middle">M{m.id.slice(0, 4)}</text>
+                            <text x={(s.sx + e.sx) / 2} y={(s.sy + e.sy) / 2 - 10} fill="gray" fontSize="12" textAnchor="middle">M{m.id}</text>
                         </g>
                     );
                 })}
@@ -146,7 +146,7 @@ export function FrameVisualizer({ nodes, members, pointLoads, displacements, sca
                     return (
                         <g key={n.id}>
                             <circle cx={sx} cy={sy} r="6" fill="white" stroke="hsl(210, 100%, 60%)" strokeWidth="2" />
-                            <text x={sx} y={sy - 15} fill="white" fontSize="12" textAnchor="middle" fontWeight="bold">{n.id.slice(0, 4)}</text>
+                            <text x={sx} y={sy - 15} fill="white" fontSize="12" textAnchor="middle" fontWeight="bold">{n.id}</text>
                         </g>
                     );
                 })}

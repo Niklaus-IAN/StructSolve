@@ -26,8 +26,11 @@ export function FrameAnalysis() {
     // --- Nodes Logic ---
     const handleAddNode = () => {
         const lastNode = nodes[nodes.length - 1];
+        // Auto-increment ID
+        const nextId = (Math.max(...nodes.map(n => parseInt(n.id) || 0), 0) + 1).toString();
+
         const newNode: FrameNode = {
-            id: crypto.randomUUID().slice(0, 8),
+            id: nextId,
             x: lastNode ? lastNode.x + 3 : 0,
             y: lastNode ? lastNode.y : 0,
             fixX: false,
@@ -59,8 +62,11 @@ export function FrameAnalysis() {
         const startNode = nodes.length >= 2 ? nodes[nodes.length - 2].id : nodes[0]?.id || '';
         const endNode = nodes.length >= 1 ? nodes[nodes.length - 1].id : nodes[0]?.id || '';
 
+        // Auto-increment Member ID
+        const nextId = (Math.max(...members.map(m => parseInt(m.id) || 0), 0) + 1).toString();
+
         const newMember: FrameMember = {
-            id: crypto.randomUUID().slice(0, 8),
+            id: nextId,
             startNodeId: startNode,
             endNodeId: endNode,
             elasticModulus: 200,
@@ -178,7 +184,7 @@ export function FrameAnalysis() {
                                 <TableBody>
                                     {nodes.map((node) => (
                                         <TableRow key={node.id} className="hover:bg-muted/10 border-border/50">
-                                            <TableCell className="font-mono text-xs text-muted-foreground">{node.id.slice(0, 4)}</TableCell>
+                                            <TableCell className="font-mono text-xs text-muted-foreground font-bold">{node.id}</TableCell>
                                             <TableCell><Input type="number" value={node.x} onChange={(e) => updateNode(node.id, 'x', parseFloat(e.target.value))} className="h-7 w-14 px-1 text-right" /></TableCell>
                                             <TableCell><Input type="number" value={node.y} onChange={(e) => updateNode(node.id, 'y', parseFloat(e.target.value))} className="h-7 w-14 px-1 text-right" /></TableCell>
                                             <TableCell className="text-center"><Checkbox checked={node.fixX} onCheckedChange={(c) => updateNode(node.id, 'fixX', c === true)} /></TableCell>
@@ -217,7 +223,7 @@ export function FrameAnalysis() {
                                 <TableBody>
                                     {members.map((member) => (
                                         <TableRow key={member.id} className="hover:bg-muted/10 border-border/50">
-                                            <TableCell className="font-mono text-xs text-muted-foreground">{member.id.slice(0, 4)}</TableCell>
+                                            <TableCell className="font-mono text-xs text-muted-foreground font-bold">M{member.id}</TableCell>
                                             <TableCell>
                                                 <Select value={member.startNodeId} onValueChange={(val) => updateMember(member.id, 'startNodeId', val)}>
                                                     <SelectTrigger className="h-7 w-[65px] px-1"><SelectValue placeholder="Node" /></SelectTrigger>
@@ -267,7 +273,7 @@ export function FrameAnalysis() {
                                             <TableCell>
                                                 <Select value={load.targetId} onValueChange={(val) => updateLoad(load.id, 'targetId', val)}>
                                                     <SelectTrigger className="h-7 w-[70px] px-1"><SelectValue placeholder="Node" /></SelectTrigger>
-                                                    <SelectContent>{nodes.map(n => <SelectItem key={n.id} value={n.id}>{n.id.slice(0, 4)}</SelectItem>)}</SelectContent>
+                                                    <SelectContent>{nodes.map(n => <SelectItem key={n.id} value={n.id}>{n.id}</SelectItem>)}</SelectContent>
                                                 </Select>
                                             </TableCell>
                                             <TableCell><Input type="number" value={load.magnitudeX} onChange={(e) => updateLoad(load.id, 'magnitudeX', parseFloat(e.target.value))} className="h-7 w-16 px-1 text-right" /></TableCell>
@@ -328,7 +334,7 @@ export function FrameAnalysis() {
                                                     const rot = result.displacements[baseIdx + 2];
                                                     return (
                                                         <TableRow key={node.id} className="hover:bg-transparent">
-                                                            <TableCell className="font-mono text-xs">{node.id.slice(0, 4)}</TableCell>
+                                                            <TableCell className="font-mono text-xs">{node.id}</TableCell>
                                                             <TableCell className={`text-right ${Math.abs(dx) > 1e-6 ? 'text-white' : 'text-muted-foreground'}`}>{(dx * 1000).toFixed(4)}</TableCell>
                                                             <TableCell className={`text-right ${Math.abs(dy) > 1e-6 ? 'text-white' : 'text-muted-foreground'}`}>{(dy * 1000).toFixed(4)}</TableCell>
                                                             <TableCell className={`text-right ${Math.abs(rot) > 1e-6 ? 'text-white' : 'text-muted-foreground'}`}>{rot.toExponential(4)}</TableCell>
@@ -358,7 +364,7 @@ export function FrameAnalysis() {
 
                                                     return (
                                                         <TableRow key={node.id} className="hover:bg-transparent">
-                                                            <TableCell className="font-mono text-xs">{node.id.slice(0, 4)}</TableCell>
+                                                            <TableCell className="font-mono text-xs">{node.id}</TableCell>
                                                             <TableCell className="text-right text-accent">{node.fixX ? rx.toFixed(3) : '-'}</TableCell>
                                                             <TableCell className="text-right text-accent">{node.fixY ? ry.toFixed(3) : '-'}</TableCell>
                                                             <TableCell className="text-right text-accent">{node.fixR ? rm.toFixed(3) : '-'}</TableCell>
