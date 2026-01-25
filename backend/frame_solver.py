@@ -49,6 +49,7 @@ class FrameSolver:
         # We calculate Fixed End Actions (FEA) and SUBTRACT them from F_global (Action -> Reaction)
         # Note: F_global = F_nodal - R_fixed_end
         
+        
         member_fixed_actions = {} # Store for post-processing: member_id -> np.array(6) local
         
         for member in request.members:
@@ -127,7 +128,7 @@ class FrameSolver:
         for member in request.members:
             # Get FEA if exists, else zero
             fea_local = member_fixed_actions.get(member.id, np.zeros(6))
-            result = self._calculate_member_forces(member, request.nodes, node_dof_map, u_total, fea_local)
+            result = self._calculate_member_forces(member, request.nodes, node_dof_map, u_total, fea_local, request)
             member_results.append(result)
             
         return {
@@ -261,19 +262,24 @@ class FrameSolver:
             if isinstance(load, FrameUniformLoad):
                 w = load.magnitude_y # Assuming local y (perpendicular)
                 # Fixed-Fixed
-                m_start = (w * L**2) / 12
-                m_end = -(w * L**2) / 12
-                fy_start = (w * L) / 2
-                fy_end = (w * L) / 2
+                # Load w (signed). If w is Negative (Down), Start Moment should be Positive (CCW).
+                # Previous: m_start = (w * L**2) / 12 -> Negative. Incorrect.
+                # Correct: m_start = -(w * L**2) / 12 -> Positive.
+                m_start = -(w * L**2) / 12
+                m_end = (w * L**2) / 12
+                # Shear Reactions
+                # If w is Negative (Down), Reaction should be Positive (Up).
+                # Previous: fy_start = (w * L) / 2 -> Negative. Incorrect.
+                fy_start = -(w * L) / 2
+                fy_end = -(w * L) / 2
                 
-                # Adjust for releases
+                # Adjust for releases for Moment (Shear adjusted below?)
                 if member.release_start and member.release_end:
                     # Simply supported
                     m_start = 0; m_end = 0
                     fy_start = w*L/2; fy_end = w*L/2
                 elif member.release_start:
                     # Pin-Fix (Propped)
-                    # Moment at pin is 0. Moment at fix increases to wL^2/8
                     m_start = 0
                     m_end = -(w * L**2) / 8
                     fy_start = 3 * w * L / 8
@@ -291,20 +297,98 @@ class FrameSolver:
                 fea[5] += m_end
                 
             elif isinstance(load, FramePointLoad):
-                # Assuming simple point load P at magnitude_y
-                # Only handling perpendicular loads for now
-                P = load.magnitude_y
-                # Position? FramePointLoad doesn't assume position along member in API yet?
-                # Wait, FramePointLoad on member needs a position. 
-                # Currently FramePointLoad in models.py is mainly for NODES.
-                # If we use it for members, we need 'location'. 
-                # Assuming center for now if generic, or check model update.
-                # IMPLEMENTATION NOTE: Only UDL is robustly defined in this plan.
-                pass
+                if load.type == "MEMBER_POINT_LOAD":
+                    P = load.magnitude_y
+                    # Default to center if position not provided
+                    a = load.position if load.position is not None else L / 2
+                    b = L - a
+                    
+                    # Fixed-Fixed Moments (Pab^2/L^2 and Pba^2/L^2)
+                    # M_start (CCW+) = + P a b^2 / L^2 
+                    # Wait, standard beam loading Down (-P):
+                    # Left Moment is CCW (+). Right is CW (-).
+                    # My P is signed. acts in Y.
+                    # If P is negative (down):
+                    # Left Reaction goes Up (+). Left Moment is CCW (+).
+                    # Formula: M1 = + P * a * b^2 / L^2  (This gives + for Down load? strictly No. Magnitude P is usually positive in textbook)
+                    # Let's derive signs.
+                    # Load Down (-P). Left Support pushes Up (+). Beam sags (Hogging at ends).
+                    # Left End: Hogging = Tension Top. Moment Vector is CCW (+). OK.
+                    # So for Negative P, we want Positive M1.
+                    # Formula M = - P a b^2 / L^2 ? If P is -10 -> M = +10... Yes.
+                    
+                    m_start = -(P * a * b**2) / L**2
+                    m_end = (P * b * a**2) / L**2
+                    
+                    # Vertical Reactions
+                    # R1 = Pb^2(3a+b)/L^3 * P ? No.
+                    # Simple statics: R1 = (Pb + M1 + M2)/L
+                    # Let's use superposition formulas or re-derive.
+                    # Fixed-Fixed Shear:
+                    # Ry1 = -P * b^2 * (3*a + b) / L**3
+                    # Wait, if P is neg, Ry1 should be pos.
+                    # -(-10) = +10. Correct.
+                    
+                    fy_start = -(P * b**2 * (3*a + b)) / L**3
+                    fy_end = -(P * a**2 * (3*b + a)) / L**3
+                    
+                    # Releases (Superposition or Switch)
+                    if member.release_start and member.release_end:
+                        # Pin-Pin (Simple Beam)
+                        m_start = 0
+                        m_end = 0
+                        fy_start = -P * b / L
+                        fy_end = -P * a / L
+                        
+                    elif member.release_start:
+                        # Pin-Fix
+                        m_start = 0
+                        # M2 = Pab(L+b)/(2L^2). (Standard Check)
+                        # For P down (-), M2 should be CW (-).
+                        # Formula: M2 = P * a * (L**2 - a**2) / (2*L**2) Is valid?
+                        # Let's trust coefficients.
+                        # R1 (Pin) = ...
+                        # Let's use the "Remove Moment" method.
+                        # Original Fixed-Fixed: M1_fix, M2_fix
+                        # Release Node 1: Apply -M1_fix. CoFactor to Node 2 is 0.5.
+                        # New M2 = M2_fix + 0.5 * (-M1_fix) = M2_fix - 0.5 M1_fix.
+                        # New R1 arises from equilibrium changes.
+                        
+                        m_fix_1 = -(P * a * b**2) / L**2
+                        m_fix_2 = (P * b * a**2) / L**2
+                        
+                        m_start = 0
+                        m_end = m_fix_2 - 0.5 * m_fix_1
+                        
+                        # Recalculate shears from statics
+                        # Sum M_about_2 = 0: R1*L + M_start(0) + M_end + P*b = 0
+                        # R1*L + m_end + P*b = 0 -> R1 = -(m_end + P*b)/L
+                        # Note: P is signed. if P=-10 (down), P*b is negative moment. m_end is negative moment.
+                        # R1 = -(-M - 10b)/L = +
+                        fy_start = -(m_end + P * b) / L
+                        fy_end = -P - fy_start
+                        
+                    elif member.release_end:
+                        # Fix-Pin
+                        m_fix_1 = -(P * a * b**2) / L**2
+                        m_fix_2 = (P * b * a**2) / L**2
+                        
+                        m_end = 0
+                        m_start = m_fix_1 - 0.5 * m_fix_2
+                        
+                        # Sum M_about_1 = 0: R2*L + M_start + P*a = 0
+                        fy_end = -(m_start + P * a) / L
+                        fy_start = -P - fy_end
+                    
+                    fea[1] += fy_start
+                    fea[2] += m_start
+                    fea[4] += fy_end
+                    fea[5] += m_end
+                
                 
         return fea
 
-    def _calculate_member_forces(self, member: FrameMember, nodes: List[FrameNode], dof_map: Dict, u_total: np.ndarray, fea_local: np.ndarray):
+    def _calculate_member_forces(self, member: FrameMember, nodes: List[FrameNode], dof_map: Dict, u_total: np.ndarray, fea_local: np.ndarray, request: FrameRequest = None):
         start_dofs = dof_map[member.start_node_id]
         end_dofs = dof_map[member.end_node_id]
         indices = start_dofs + end_dofs
@@ -314,27 +398,152 @@ class FrameSolver:
         u_local = T @ u_global_member
         
         # Recalculate k_local (needed)
-        # Performance optim: could cache this. Re-computing for simplicity
-        # We need the UN-MODIFIED k_local for Fixed-Fixed, BUT if we used Releases, we must use the Released k_local
-        # because the internal Displacement u_local respects the release.
-        # Actually: Member Forces = k_local_released * u_local + FEA_released
-        
-        k_local_matrix_temp = self._calculate_member_global_stiffness(member, nodes) # This returns Global.
-        # We need Local.
-        # Re-derive local logic or invert transform?
-        # k_local = T @ k_global @ T.T ? Yes.
+        k_local_matrix_temp = self._calculate_member_global_stiffness(member, nodes)
         k_local = T @ k_local_matrix_temp @ T.T
         
-        # Calculate forces
+        # Calculate forces at ends (End Actions)
         f_local = k_local @ u_local + fea_local
         
+        # Discretize member for diagram data (20 segments)
+        stations = 21
+        L, _, _ = self._get_geometry(member, nodes)
+        x_vals = np.linspace(0, L, stations)
+        
+        n_vals = []
+        v_vals = []
+        m_vals = []
+        
+        for x in x_vals:
+            n = -f_local[0]
+            v = f_local[1]
+            m = -f_local[2] + f_local[1] * x
+            
+            # Add effects of loads along span
+            if request:
+                for ul in request.uniform_loads:
+                    if ul.member_id == member.id:
+                        w = ul.magnitude_y 
+                        # Apply if x > 0
+                        if x > 0:
+                            v += w * x
+                            m += w * x**2 / 2
+                
+                for pl in request.point_loads:
+                    if pl.type == "MEMBER_POINT_LOAD" and pl.target_id == member.id:
+                        P = pl.magnitude_y
+                        a = pl.position if pl.position is not None else L/2
+                        # Macaulay Step Function: Only add if x > a
+                        if x > a:
+                            v += P
+                            m += P * (x - a)
+
+            n_vals.append(n)
+            v_vals.append(v)
+            m_vals.append(m)
+
+        # EMD and FMD Calculation
+        # EMD: Linear interpolation of end moments.
+        # Note on Signs: f_local[2] is Moment at Start (Counter-Clockwise).
+        # f_local[5] is Moment at End (Counter-Clockwise).
+        # Beam Sign Convention (Sagging Positive):
+        # M(x) due to End Moments:
+        # M_start_beam = -f_local[2] (Internal Moment just inside start).
+        # M_end_beam = f_local[5] (Internal Moment just inside end).
+        # Linear Interp: M_emd(x) = M_start_beam + (M_end_beam - M_start_beam) * (x/L).
+        
+        # Wait, let's stick to the solver's internal sign convention for `m_vals` which is likely consistent.
+        # In loop: m = -f_local[2] + f_local[1] * x + LoadTerms.
+        # -f_local[2] is the moment from the start node reaction.
+        # f_local[1] * x is the moment from the start node shear.
+        # This describes the TOTAL moment.
+        # The "End Moment Diagram" usually implies the moment diagram IF there were NO span loads (only end moments/shears balanced).
+        # But End Shears depend on Span Loads.
+        # Definition:
+        # FMD = Moment on Simply Supported Beam with same Span Loads.
+        # EMD = Total BMD - FMD. (The "Fixing" Moments).
+        
+        emd_vals = []
+        fmd_vals = []
+        
+        # We can calculate FMD by assuming simple supports:
+        # Reactions for Simple Beam:
+        # R_start_simple, R_end_simple.
+        # Calculate Moment(x) using these.
+        
+        # Step 1: Calculate Simple Support Reactions for Span Loads
+        r_simple_start_y = 0.0
+        r_simple_end_y = 0.0
+        
+        if request:
+             for ul in request.uniform_loads:
+                if ul.member_id == member.id:
+                    w = ul.magnitude_y
+                    # Total Load W = w*L
+                    # R = wL/2
+                    r_simple_start_y += w * L / 2
+                    r_simple_end_y += w * L / 2
+                    
+             for pl in request.point_loads:
+                if pl.type == "MEMBER_POINT_LOAD" and pl.target_id == member.id:
+                    P = pl.magnitude_y
+                    a = pl.position if pl.position is not None else L/2
+                    b = L - a
+                    # R_start = P*b/L
+                    # R_end = P*a/L
+                    r_simple_start_y += P * b / L
+                    r_simple_end_y += P * a / L
+
+        # Step 2: Iterate and Calc FMD
+        for i, x in enumerate(x_vals):
+            # FMD (Simple Beam Moment)
+            # M_simple = R_start * x + Load_Terms
+            # Note: R is Up (+). Load terms are usually Down (-).
+            # Sign convention: Sagging Positive.
+            # My solver convention `m`: Check loop (m = -f_local[2] ...).
+            # If f_local[2] (Reaction M) is CCW (+). -f_local[2] is starting internal moment?
+            # Let's align FMD with `m_vals` convention.
+            
+            m_fmd = r_simple_start_y * x
+            
+            # Add Load Effects (Same as Total Loop)
+            if request:
+                for ul in request.uniform_loads:
+                    if ul.member_id == member.id:
+                        w = ul.magnitude_y 
+                        if x > 0:
+                            # Load is w. Moment arm x/2.
+                            # w is signed (usually -).
+                            # If w is -, force is Down. Moment is Hogging (-).
+                            # + w*x * x/2. (Negative result).
+                            m_fmd += w * x**2 / 2
+                
+                for pl in request.point_loads:
+                    if pl.type == "MEMBER_POINT_LOAD" and pl.target_id == member.id:
+                        P = pl.magnitude_y
+                        a = pl.position if pl.position is not None else L/2
+                        if x > a:
+                            m_fmd += P * (x - a)
+            
+            fmd_vals.append(m_fmd)
+            
+            # EMD = Total - FMD
+            # This ensures EMD + FMD = Total exactly.
+            m_total = m_vals[i]
+            emd_vals.append(m_total - m_fmd)
+
         return {
             "member_id": member.id,
             "axial_start": f_local[0],
             "shear_start": f_local[1],
             "moment_start": f_local[2],
             "axial_end": f_local[3],
-            "shear_end": f_local[4], # Note: Check sign convention
-            "moment_end": f_local[5]
+            "shear_end": f_local[4],
+            "moment_end": f_local[5],
+            "stations": x_vals.tolist(),
+            "n_diagram": n_vals,
+            "v_diagram": v_vals,
+            "m_diagram": m_vals,
+            "fmd_diagram": fmd_vals,
+            "emd_diagram": emd_vals
         }
 

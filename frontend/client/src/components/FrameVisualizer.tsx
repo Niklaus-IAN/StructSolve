@@ -7,10 +7,13 @@ interface FrameVisualizerProps {
     members: FrameMember[];
     pointLoads: FramePointLoad[];
     displacements?: number[]; // Flattened [u1, v1, r1, u2, ...]
+    memberResults?: any[]; // Results containing diagrams
     scale?: number; // Deformation scale factor
+    showBMD?: boolean;
+    showSFD?: boolean;
 }
 
-export function FrameVisualizer({ nodes, members, pointLoads, displacements, scale = 100 }: FrameVisualizerProps) {
+export function FrameVisualizer({ nodes, members, pointLoads, displacements, memberResults, scale = 100, showBMD = false, showSFD = false }: FrameVisualizerProps) {
     // 1. Calculate Bounding Box for Auto-Scaling
     const { minX, maxX, minY, maxY, width, height } = useMemo(() => {
         if (nodes.length === 0) return { minX: 0, maxX: 10, minY: 0, maxY: 10, width: 10, height: 10 };
@@ -72,6 +75,28 @@ export function FrameVisualizer({ nodes, members, pointLoads, displacements, sca
         });
     }, [nodes, displacements, scale]);
 
+    const maxMomentVal = useMemo(() => {
+        if (!memberResults) return 1;
+        let max = 0;
+        memberResults.forEach(r => {
+            if (r.m_diagram) max = Math.max(max, ...r.m_diagram.map(Math.abs));
+        });
+        return max || 1;
+    }, [memberResults]);
+
+    const maxShearVal = useMemo(() => {
+        if (!memberResults) return 1;
+        let max = 0;
+        memberResults.forEach(r => {
+            if (r.v_diagram) max = Math.max(max, ...r.v_diagram.map(Math.abs));
+        });
+        return max || 1;
+    }, [memberResults]);
+
+    // Dynamic Scale: Target ~50px max height on screen
+    const bmdScale = 50 / maxMomentVal;
+    const sfdScale = 50 / maxShearVal;
+
     return (
         <div className="w-full h-full bg-slate-950 rounded-lg overflow-hidden border border-border/20 shadow-inner relative">
             {/* Grid Background */}
@@ -102,15 +127,94 @@ export function FrameVisualizer({ nodes, members, pointLoads, displacements, sca
                     );
                 })}
 
+                {/* SFD Logic (Blue) */}
+                {showSFD && memberResults && memberResults.map(res => {
+                    const member = members.find(m => m.id === res.member_id);
+                    if (!member || !res.v_diagram) return null;
+
+                    const startIdx = nodes.findIndex(n => n.id === member.startNodeId);
+                    const endIdx = nodes.findIndex(n => n.id === member.endNodeId);
+                    if (startIdx === -1 || endIdx === -1) return null;
+
+                    const start = nodes[startIdx];
+                    const end = nodes[endIdx];
+                    const s = toSVG(start.x, start.y);
+                    const e = toSVG(end.x, end.y);
+
+                    const dx_screen = e.sx - s.sx;
+                    const dy_screen = e.sy - s.sy;
+                    const len_screen = Math.sqrt(dx_screen ** 2 + dy_screen ** 2);
+                    const ux = -dy_screen / len_screen;
+                    const uy = dx_screen / len_screen;
+
+                    const vals = res.v_diagram;
+                    let pathData = `M ${s.sx} ${s.sy}`;
+
+                    vals.forEach((v: number, i: number) => {
+                        const t = i / (vals.length - 1);
+                        const px = s.sx + dx_screen * t;
+                        const py = s.sy + dy_screen * t;
+                        const offX = px + ux * v * sfdScale;
+                        const offY = py + uy * v * sfdScale;
+                        pathData += ` L ${offX} ${offY}`;
+                    });
+
+                    pathData += ` L ${e.sx} ${e.sy} L ${s.sx} ${s.sy}`;
+
+                    return (
+                        <path key={`sfd-${res.member_id}`} d={pathData} fill="rgba(56, 189, 248, 0.3)" stroke="#38bdf8" strokeWidth="1" />
+                    );
+                })}
+
+                {/* BMD Logic (Red) */}
+                {showBMD && memberResults && memberResults.map(res => {
+                    const member = members.find(m => m.id === res.member_id);
+                    if (!member || !res.m_diagram) return null;
+
+                    const startIdx = nodes.findIndex(n => n.id === member.startNodeId);
+                    const endIdx = nodes.findIndex(n => n.id === member.endNodeId);
+                    if (startIdx === -1 || endIdx === -1) return null;
+
+                    const start = nodes[startIdx];
+                    const end = nodes[endIdx];
+                    const s = toSVG(start.x, start.y);
+                    const e = toSVG(end.x, end.y);
+
+                    const dx_screen = e.sx - s.sx;
+                    const dy_screen = e.sy - s.sy;
+                    const len_screen = Math.sqrt(dx_screen ** 2 + dy_screen ** 2);
+                    const ux = -dy_screen / len_screen;
+                    const uy = dx_screen / len_screen;
+
+                    const vals = res.m_diagram;
+                    let pathData = `M ${s.sx} ${s.sy}`;
+
+                    vals.forEach((v: number, i: number) => {
+                        const t = i / (vals.length - 1);
+                        const px = s.sx + dx_screen * t;
+                        const py = s.sy + dy_screen * t;
+                        // For Frames, usually plot moments on "Tension Side" or consistent local axis.
+                        // We use local axis convention.
+                        const offX = px + ux * v * bmdScale;
+                        const offY = py + uy * v * bmdScale;
+                        pathData += ` L ${offX} ${offY}`;
+                    });
+
+                    pathData += ` L ${e.sx} ${e.sy} L ${s.sx} ${s.sy}`;
+
+                    return (
+                        <path key={`bmd-${res.member_id}`} d={pathData} fill="rgba(255, 99, 71, 0.3)" stroke="red" strokeWidth="1" />
+                    );
+                })}
+
                 {/* Deformed Shape (Dashed) */}
-                {deformedNodes && members.map(m => {
+                {displacements && deformedNodes && members.map(m => {
                     const startIdx = nodes.findIndex(n => n.id === m.startNodeId);
                     const endIdx = nodes.findIndex(n => n.id === m.endNodeId);
                     if (startIdx === -1 || endIdx === -1) return null;
 
                     const start = deformedNodes[startIdx];
                     const end = deformedNodes[endIdx];
-
                     const s = toSVG(start.x, start.y);
                     const e = toSVG(end.x, end.y);
 
@@ -145,7 +249,7 @@ export function FrameVisualizer({ nodes, members, pointLoads, displacements, sca
                     const { sx, sy } = toSVG(n.x, n.y);
                     return (
                         <g key={n.id}>
-                            <circle cx={sx} cy={sy} r="6" fill="white" stroke="hsl(210, 100%, 60%)" strokeWidth="2" />
+                            <circle cx={sx} cy={sy} r="4" fill="white" stroke="hsl(210, 100%, 60%)" strokeWidth="2" />
                             <text x={sx} y={sy - 15} fill="white" fontSize="12" textAnchor="middle" fontWeight="bold">{n.id}</text>
                         </g>
                     );
@@ -160,47 +264,11 @@ export function FrameVisualizer({ nodes, members, pointLoads, displacements, sca
                     // Scale arrow length by magnitude (logarithmic or clamped)
                     const mag = Math.sqrt(l.magnitudeX ** 2 + l.magnitudeY ** 2);
                     if (mag === 0) return null;
-                    const arrowLen = Math.min(Math.max(mag * 5, 30), 80);
-                    const angle = Math.atan2(-l.magnitudeY, l.magnitudeX); // SVG Y is down, Force Y is Up? No, Force Y is Up usually. 
-                    // If Load Y is -10 (Down), svg angle should be positive?
-                    // SVG Y increases Down. 
-                    // Force vector (Fx, Fy). 
-                    // Arrow start: (sx, sy). Arrow end: (sx + Fx, sy - Fy) (Visual direction)
-                    // Actually arrows usually point TO the node.
-                    // Let's draw arrow tip at node.
 
-                    const tailX = sx - Math.cos(Math.atan2(-l.magnitudeY, l.magnitudeX)) * arrowLen;
-                    const tailY = sy - Math.sin(Math.atan2(-l.magnitudeY, l.magnitudeX)) * arrowLen; // Check sign?
-
-                    // Simpler: Just map vector directions.
-                    // If Fy = -10 (Down). We want arrow pointing Down.
-                    // Arrow Tip at (sx, sy).
-                    // Arrow Tail at (sx - Fx_vis, sy - Fy_vis)
-                    // Fy=-10 => Down. SVG Y increases Down. So vector is (0, +10).
-
+                    // Simple arrow logic
                     return (
                         <g key={l.id}>
-                            <defs>
-                                <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-                                    <polygon points="0 0, 10 3.5, 0 7" fill="hsl(0, 84%, 60%)" />
-                                </marker>
-                            </defs>
-                            <line
-                                x1={sx - l.magnitudeX * 5}
-                                y1={sy + l.magnitudeY * 5} // Flip Y for visualization? If Y=-10, we want it above? No.
-                                // Let's rely on simple direction check.
-                                // If load is (0, -10), it points DOWN. Arrow tip should be at node. Tail should be ABOVE.
-                                // Tail Y = sy - 40.
-
-                                x2={sx}
-                                y2={sy}
-                                stroke="hsl(0, 84%, 60%)"
-                                strokeWidth="3"
-                                markerEnd="url(#arrowhead)"
-                            />
-                            <text x={sx - l.magnitudeX * 5} y={sy + l.magnitudeY * 5 - 5} fill="hsl(0, 84%, 60%)" fontSize="12">
-                                {mag.toFixed(1)} kN
-                            </text>
+                            <line x1={sx - l.magnitudeX * 2} y1={sy + l.magnitudeY * 2} x2={sx} y2={sy} stroke="hsl(0, 84%, 60%)" strokeWidth="3" markerEnd="url(#arrowhead)" />
                         </g>
                     );
                 })}

@@ -19,8 +19,10 @@ export function FrameAnalysis() {
         { id: '1', startNodeId: '1', endNodeId: '2', elasticModulus: 200, momentOfInertia: 500, crossSectionArea: 0.01, releaseStart: false, releaseEnd: false }
     ]);
     const [pointLoads, setPointLoads] = useState<FramePointLoad[]>([]);
-    const [uniformLoads, setUniformLoads] = useState<any[]>([]); // Use appropriate type if available
+    const [uniformLoads, setUniformLoads] = useState<any[]>([]);
+    const [memberPointLoads, setMemberPointLoads] = useState<any[]>([]); // New State for Member Point Loads
     const [result, setResult] = useState<any>(null);
+    const [showBMD, setShowBMD] = useState(false);
 
     const { toast } = useToast();
 
@@ -114,8 +116,8 @@ export function FrameAnalysis() {
             const payload = {
                 nodes,
                 members,
-                pointLoads,
-                uniformLoads // Send uniform loads
+                pointLoads: [...pointLoads, ...memberPointLoads], // Merge Node Loads and Member Point Loads
+                uniformLoads
             };
 
             const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/calculate-frame`, {
@@ -299,6 +301,72 @@ export function FrameAnalysis() {
                         </div>
                     </section>
 
+                    <section className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                                <ArrowDown className="h-4 w-4 text-primary" /> Member Point Loads
+                            </h3>
+                            <Button onClick={() => {
+                                const newLoad = {
+                                    id: crypto.randomUUID().slice(0, 8),
+                                    type: 'MEMBER_POINT_LOAD',
+                                    targetId: members[0]?.id || '',
+                                    magnitudeX: 0,
+                                    magnitudeY: -10,
+                                    moment: 0,
+                                    position: 2 // Default position
+                                };
+                                setMemberPointLoads([...memberPointLoads, newLoad]);
+                            }} size="sm" variant="outline" className="h-8">
+                                <Plus className="h-3 w-3 mr-1" /> Add
+                            </Button>
+                        </div>
+                        <div className="rounded-md border border-border/50 overflow-hidden bg-card/50 backdrop-blur-sm">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow className="hover:bg-transparent border-border/50">
+                                        <TableHead className="w-[80px]">Member</TableHead>
+                                        <TableHead>Px <span className="text-xs text-muted-foreground">(kN)</span></TableHead>
+                                        <TableHead>Py <span className="text-xs text-muted-foreground">(kN)</span></TableHead>
+                                        <TableHead>Pos <span className="text-xs text-muted-foreground">(m)</span></TableHead>
+                                        <TableHead className="w-[40px]"></TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {memberPointLoads.map((load) => (
+                                        <TableRow key={load.id} className="hover:bg-muted/10 border-border/50">
+                                            <TableCell>
+                                                <Select value={load.targetId} onValueChange={(val) => {
+                                                    setMemberPointLoads(memberPointLoads.map(l => l.id === load.id ? { ...l, targetId: val } : l));
+                                                }}>
+                                                    <SelectTrigger className="h-7 w-[70px] px-1"><SelectValue placeholder="Mem" /></SelectTrigger>
+                                                    <SelectContent>{members.map(m => <SelectItem key={m.id} value={m.id}>M{m.id}</SelectItem>)}</SelectContent>
+                                                </Select>
+                                            </TableCell>
+                                            <TableCell><Input type="number" value={load.magnitudeX} onChange={(e) => {
+                                                setMemberPointLoads(memberPointLoads.map(l => l.id === load.id ? { ...l, magnitudeX: parseFloat(e.target.value) } : l));
+                                            }} className="h-7 w-20 px-1 text-right" /></TableCell>
+                                            <TableCell><Input type="number" value={load.magnitudeY} onChange={(e) => {
+                                                setMemberPointLoads(memberPointLoads.map(l => l.id === load.id ? { ...l, magnitudeY: parseFloat(e.target.value) } : l));
+                                            }} className="h-7 w-20 px-1 text-right" /></TableCell>
+                                            <TableCell><Input type="number" value={load.position} onChange={(e) => {
+                                                setMemberPointLoads(memberPointLoads.map(l => l.id === load.id ? { ...l, position: parseFloat(e.target.value) } : l));
+                                            }} className="h-7 w-16 px-1 text-right" /></TableCell>
+                                            <TableCell><Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => {
+                                                setMemberPointLoads(memberPointLoads.filter(l => l.id !== load.id));
+                                            }}><Trash2 className="h-3 w-3" /></Button></TableCell>
+                                        </TableRow>
+                                    ))}
+                                    {memberPointLoads.length === 0 && (
+                                        <TableRow>
+                                            <TableCell colSpan={5} className="text-center text-muted-foreground h-12">No member point loads</TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </section>
+
                     {/* Uniform Loads Section */}
                     <section className="space-y-4">
                         <div className="flex items-center justify-between">
@@ -366,8 +434,12 @@ export function FrameAnalysis() {
                 <div className="lg:col-span-2 space-y-8">
                     {/* Visualizer */}
                     <Card className="h-[500px] glass-card border-primary/20 flex flex-col overflow-hidden">
-                        <CardHeader className="py-4 border-b border-border/50 bg-slate-950/50">
+                        <CardHeader className="py-4 border-b border-border/50 bg-slate-950/50 flex flex-row items-center justify-between">
                             <CardTitle className="text-lg">Structure Visualization</CardTitle>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox id="show-bmd" checked={showBMD} onCheckedChange={(c) => setShowBMD(c === true)} />
+                                <label htmlFor="show-bmd" className="text-sm text-muted-foreground cursor-pointer">Show BMD</label>
+                            </div>
                         </CardHeader>
                         <div className="flex-1 relative bg-slate-950">
                             <FrameVisualizer
@@ -375,6 +447,8 @@ export function FrameAnalysis() {
                                 members={members}
                                 pointLoads={pointLoads}
                                 displacements={result?.displacements}
+                                memberResults={result?.member_results}
+                                showBMD={showBMD}
                                 scale={100} // Default deformation scale
                             />
                         </div>

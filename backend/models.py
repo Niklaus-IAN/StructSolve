@@ -155,6 +155,8 @@ class FrameMember(BaseModel):
     elastic_modulus: float = Field(gt=0, description="Elastic modulus E (kN/m²)", alias="elasticModulus")
     moment_of_inertia: float = Field(gt=0, description="Moment of inertia I (m⁴)", alias="momentOfInertia")
     cross_section_area: float = Field(gt=0, description="Cross-sectional area A (m²)", alias="crossSectionArea")
+    release_start: bool = Field(default=False, description="Pin start joint", alias="releaseStart")
+    release_end: bool = Field(default=False, description="Pin end joint", alias="releaseEnd")
 
     class Config:
         populate_by_name = True
@@ -203,6 +205,11 @@ class FrameMemberResult(BaseModel):
     axial_end: float = Field(alias="axialEnd")
     shear_end: float = Field(alias="shearEnd")
     moment_end: float = Field(alias="momentEnd")
+    # Diagram Data
+    stations: Optional[List[float]] = None
+    n_diagram: Optional[List[float]] = Field(None, alias="nDiagram")
+    v_diagram: Optional[List[float]] = Field(None, alias="vDiagram")
+    m_diagram: Optional[List[float]] = Field(None, alias="mDiagram")
 
     class Config:
         populate_by_name = True
