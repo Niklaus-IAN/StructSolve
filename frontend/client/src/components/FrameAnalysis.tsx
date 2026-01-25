@@ -35,23 +35,25 @@ export function FrameAnalysis() {
 
     // Map Frame Results to Beam Results format for ResultsDisplay
     const mappedResult = React.useMemo(() => {
-        if (!result || !result.member_results) return null;
+        const resultsArray = result?.member_results || result?.memberResults;
+        if (!result || !resultsArray) return null;
 
-        const spans = result.member_results.map((res: any) => {
+        const spans = resultsArray.map((res: any) => {
             // Basic arrays
             const xCoords = res.stations; // [0, ..., L]
 
-            // Check if we have the new separated data
-            const sfd = res.v_diagram || [];
-            const bmd = res.m_diagram || [];
-            // If backend doesn't send emd/fmd yet (older version?), fallback to Total BMD
-            const emd = res.emd_diagram || bmd.map(() => 0);
-            const fmd = res.fmd_diagram || bmd.map(() => 0);
+            // Check for both snake_case (legacy/internal) and camelCase (API)
+            const sfd = res.v_diagram || res.vDiagram || [];
+            const bmd = res.m_diagram || res.mDiagram || [];
+
+            // Handle FMD/EMD
+            const emd = res.emd_diagram || res.emdDiagram || bmd.map(() => 0);
+            const fmd = res.fmd_diagram || res.fmdDiagram || bmd.map(() => 0);
 
             return {
-                spanId: `Member ${res.member_id}`,
-                momentLeft: res.moment_start, // Just for label
-                momentRight: res.moment_end,
+                spanId: `Member ${res.member_id || res.memberId}`,
+                momentLeft: res.moment_start || res.momentStart,
+                momentRight: res.moment_end || res.momentEnd,
 
                 sfdData: { xCoords, values: sfd },
                 bmdData: { xCoords, values: bmd },
