@@ -210,6 +210,8 @@ class FrameMemberResult(BaseModel):
     n_diagram: Optional[List[float]] = Field(None, alias="nDiagram")
     v_diagram: Optional[List[float]] = Field(None, alias="vDiagram")
     m_diagram: Optional[List[float]] = Field(None, alias="mDiagram")
+    fmd_diagram: Optional[List[float]] = Field(None, alias="fmdDiagram")
+    emd_diagram: Optional[List[float]] = Field(None, alias="emdDiagram")
 
     class Config:
         populate_by_name = True

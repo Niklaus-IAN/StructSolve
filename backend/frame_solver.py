@@ -541,10 +541,10 @@ class FrameSolver:
             "shear_end": f_local[4],
             "moment_end": f_local[5],
             "stations": x_vals.tolist(),
-            "n_diagram": n_vals,
-            "v_diagram": v_vals,
-            "m_diagram": m_vals,
-            "fmd_diagram": fmd_vals,
-            "emd_diagram": emd_vals
+            "n_diagram": n_vals.tolist() if hasattr(n_vals, 'tolist') else n_vals,
+            "v_diagram": v_vals.tolist() if hasattr(v_vals, 'tolist') else v_vals,
+            "m_diagram": m_vals.tolist() if hasattr(m_vals, 'tolist') else m_vals,
+            "fmd_diagram": fmd_vals if isinstance(fmd_vals, list) else fmd_vals.tolist(),
+            "emd_diagram": emd_vals if isinstance(emd_vals, list) else emd_vals.tolist()
         }
 
