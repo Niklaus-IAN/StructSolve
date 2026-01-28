@@ -98,23 +98,27 @@ class FrameSolver:
             else: restrained_dofs.append(dofs[2])
             
         # 5. Solve for Displacements
-        if not free_dofs:
-            raise ValueError("Structure is fully restrained")
+        # if not free_dofs:
+        #    raise ValueError("Structure is fully restrained")
+        
+        if free_dofs:    
+            K_ff = K_global[np.ix_(free_dofs, free_dofs)]
+            F_f = F_global[free_dofs]
             
-        K_ff = K_global[np.ix_(free_dofs, free_dofs)]
-        F_f = F_global[free_dofs]
-        
-        # Stability Check
-        det = np.linalg.det(K_ff) if K_ff.shape[0] < 100 else 1.0 
-        # (Determinant check is expensive for large matrices, but useful for small ones)
-        
-        try:
-            u_free = np.linalg.solve(K_ff, F_f)
-        except np.linalg.LinAlgError:
-            raise ValueError("Structure is unstable (singular stiffness matrix)")
+            # Stability Check
+            det = np.linalg.det(K_ff) if K_ff.shape[0] < 100 else 1.0 
+            # (Determinant check is expensive for large matrices, but useful for small ones)
+            
+            try:
+                u_free = np.linalg.solve(K_ff, F_f)
+            except np.linalg.LinAlgError:
+                raise ValueError("Structure is unstable (singular stiffness matrix)")
+        else:
+            u_free = np.array([])
             
         u_total = np.zeros(total_dof)
-        u_total[free_dofs] = u_free
+        if free_dofs:
+            u_total[free_dofs] = u_free
         
         # 6. Post-Processing: Reactions and Forces
         reactions = np.zeros(total_dof)
@@ -480,19 +484,20 @@ class FrameSolver:
                 if ul.member_id == member.id:
                     w = ul.magnitude_y
                     # Total Load W = w*L
-                    # R = wL/2
-                    r_simple_start_y += w * L / 2
-                    r_simple_end_y += w * L / 2
+                    # R = -Total_Load / 2 (Opposing load)
+                    # if w is negative (down), R should be positive (up)
+                    r_simple_start_y -= w * L / 2
+                    r_simple_end_y -= w * L / 2
                     
              for pl in request.point_loads:
                 if pl.type == "MEMBER_POINT_LOAD" and pl.target_id == member.id:
                     P = pl.magnitude_y
                     a = pl.position if pl.position is not None else L/2
                     b = L - a
-                    # R_start = P*b/L
-                    # R_end = P*a/L
-                    r_simple_start_y += P * b / L
-                    r_simple_end_y += P * a / L
+                    # R_start = -P*b/L
+                    # R_end = -P*a/L
+                    r_simple_start_y -= P * b / L
+                    r_simple_end_y -= P * a / L
 
         # Step 2: Iterate and Calc FMD
         for i, x in enumerate(x_vals):
