@@ -33,6 +33,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
   const [showFMD, setShowFMD] = useState(true);
   const [showEMD, setShowEMD] = useState(true);
   const [showBMD, setShowBMD] = useState(true);
+  const [plotSide, setPlotSide] = useState<'mathematical' | 'tension'>('mathematical');
 
   if (!result) return null;
   if (!result.spans || result.spans.length === 0) {
@@ -59,8 +60,10 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
         title: { display: true, text: 'Position (m)', color: 'rgba(255, 255, 255, 0.7)' }
       },
       y: {
+        reverse: plotSide === 'tension', // Invert Y axis for tension side plotting
         grid: { color: 'rgba(255, 255, 255, 0.1)' },
-        ticks: { color: 'rgba(255, 255, 255, 0.5)' }
+        ticks: { color: 'rgba(255, 255, 255, 0.5)' },
+        title: { display: true, text: `Moment (kN·m) [${plotSide === 'tension' ? '+ Down' : '+ Up'}]`, color: 'rgba(255, 255, 255, 0.7)' }
       }
     },
     plugins: {
@@ -178,37 +181,78 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ result }) => {
             Bending Moment Diagram (BMD)
           </h3>
 
+          {/* Preset Controls */}
+          <div className="flex gap-2 mb-2">
+            <button
+              onClick={() => {
+                setShowFMD(false);
+                setShowEMD(false);
+                setShowBMD(true);
+                setPlotSide('tension');
+              }}
+              className="px-3 py-1 bg-green-500/20 text-green-300 rounded hover:bg-green-500/30 text-xs transition-colors border border-green-500/50"
+            >
+              📖 Textbook View
+            </button>
+            <button
+              onClick={() => {
+                setShowFMD(true);
+                setShowEMD(true);
+                setShowBMD(true);
+                setPlotSide('mathematical');
+              }}
+              className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded hover:bg-blue-500/30 text-xs transition-colors border border-blue-500/50"
+            >
+              🔍 Detailed Analysis
+            </button>
+          </div>
+
           {/* Toggle Controls */}
-          <div className="flex gap-3 text-sm">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={showFMD}
-                onChange={(e) => setShowFMD(e.target.checked)}
-                className="w-4 h-4 rounded accent-blue-500"
-              />
-              <span className="text-blue-400">FMD</span>
-            </label>
+          <div className="flex flex-wrap gap-4 text-sm items-center">
+            <div className="flex gap-3 border-r border-white/10 pr-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showFMD}
+                  onChange={(e) => setShowFMD(e.target.checked)}
+                  className="w-4 h-4 rounded accent-blue-500"
+                />
+                <span className="text-blue-400">FMD</span>
+              </label>
 
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={showEMD}
-                onChange={(e) => setShowEMD(e.target.checked)}
-                className="w-4 h-4 rounded accent-red-500"
-              />
-              <span className="text-red-400">EMD</span>
-            </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showEMD}
+                  onChange={(e) => setShowEMD(e.target.checked)}
+                  className="w-4 h-4 rounded accent-red-500"
+                />
+                <span className="text-red-400">EMD</span>
+              </label>
 
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={showBMD}
-                onChange={(e) => setShowBMD(e.target.checked)}
-                className="w-4 h-4 rounded accent-green-500"
-              />
-              <span className="text-green-400">Complete BMD</span>
-            </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showBMD}
+                  onChange={(e) => setShowBMD(e.target.checked)}
+                  className="w-4 h-4 rounded accent-green-500"
+                />
+                <span className="text-green-400">Total</span>
+              </label>
+            </div>
+
+            {/* Axis Control */}
+            <div className="flex items-center gap-2">
+              <span className="text-white/60 text-xs uppercase tracking-wider">Plot on:</span>
+              <select
+                value={plotSide}
+                onChange={(e) => setPlotSide(e.target.value as 'mathematical' | 'tension')}
+                className="bg-black/20 border border-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-blue-500/50"
+              >
+                <option value="mathematical">Mathematical (+ Up)</option>
+                <option value="tension">Tension Side (+ Down)</option>
+              </select>
+            </div>
           </div>
         </div>
 
